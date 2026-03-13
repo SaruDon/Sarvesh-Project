@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DATASET_DIR="/media/a10/Windows/cicids2018"
+DATASET_DIR="/mnt/cicids2018"
 mkdir -p "$DATASET_DIR"
 cd "$DATASET_DIR"
 
@@ -20,7 +20,7 @@ FOLDERS=(
 "Wednesday-28-02-2018"
 )
 
-LOGFILE="download_log.txt"
+LOGFILE="/home/a10/Desktop/Sarvesh Project/download_log.txt"
 
 echo "Download started $(date)" | tee -a "$LOGFILE"
 
@@ -39,10 +39,13 @@ do
     # -------------------------
     # Download PCAP with resume
     # -------------------------
-    if [ -f "$LOCAL_PCAP" ]; then
-        echo "SKIP: $PCAP_FILE already exists" | tee -a "$LOGFILE"
+    # If the file exists but we see a .aria2 file, we SHOULD resume.
+    # aria2 handles the -c resume internally, so if we HAVE a .aria2 file, 
+    # we should NOT skip. 
+    if [ -f "$LOCAL_PCAP" ] && [ ! -f "$LOCAL_PCAP.aria2" ]; then
+        echo "SKIP: $PCAP_FILE already exists and no .aria2 file found" | tee -a "$LOGFILE"
     else
-        echo "Downloading $PCAP_FILE with aria2 resume" | tee -a "$LOGFILE"
+        echo "Starting/Resuming $PCAP_FILE with aria2..." | tee -a "$LOGFILE"
 
         URL="$BASE_HTTP/$FOLDER/$PCAP_FILE"
 
