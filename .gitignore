@@ -6,15 +6,20 @@ __pycache__/
 # Data
 cicids2018/
 extracted_features/
+processed_dataset/
+analysis_results/
 *.pcap
 *.zip
 *.rar
 *.csv
+*.parquet
 
 # Logs
 *.log
-trash/test_data/
+trash/
+tests/
 
 # OS
 .DS_Store
 Thumbs.db
+

@@ -22,12 +22,44 @@
 4. **Automation Orchestration**:
    - Created `run_nids_pipeline.ps1` as the master orchestrator for Windows.
 
-## Immediate Next Steps (Pending Data Completion)
-1. **Full Extraction**: Run `extract_pcap.ps1` once PCAP downloads finish.
-2. **Initial EDA**: Execute `eda_initial.py` to analyze extracted CSVs.
-3. **Dataset Building**: Run `dataset_builder.py` to generate labeled Parquet files for training.
+## Status: Day 2 Progress (2026-03-16)
+
+### ✅ Accomplishments
+1. **Pipeline Verification**:
+   - Verified `extract_pcap.ps1`, `eda_initial.py`, and `dataset_builder.py` on synthetic data.
+   - Fixed `tcp.flags` hex-to-int conversion and pandas frequency string deprecations.
+2. **Real Data Processing (Botnet)**:
+   - Successfully unzipped 44GB `Friday-02-03-2018-pcap.zip`.
+   - Extracted features from the first 3 partitions of the real dataset.
+   - Generated **16-feature flows** (XGBoost) and **200x9 sequences** (Transformer).
+3. **Advanced Feature Engineering**:
+   - Integrated `ip.ttl`, `tcp.window_size_value`, `packet_direction`, and `payload_ratio`.
+   - Switched to **session-based sliding windows** to capture long-term attack behavior.
+
+### 📊 Dataset Processing Checklist
+- [x] **Friday-02-03-2018 (Botnet)**: 
+  - [x] Download PCAP
+  - [x] Unzip Archive
+  - [/] Feature Extraction (In progress - 3 partitions trial complete)
+  - [/] EDA & Dataset Building
+- [/] **Friday-16-02-2018 (DDoS)**:
+  - [x] Download Logs
+  - [/] Download PCAP (aria2 downloading)
+- [/] **Tuesday-20-02-2018 (DDoS)**:
+  - [/] Download PCAP (pcap.rar aria2 downloading)
+- [ ] **Friday-23-02-2018 (Brute Force)**:
+  - [x] Download Logs
+  - [ ] Download PCAP (Queued)
+- [ ] **Thursday Folders (Infiltration/Web)**:
+  - [x] Download Logs
+  - [ ] Download PCAP (Queued)
+- [ ] **Wednesday Folders (DoS/SQL)**:
+  - [ ] Download Logs (Queued)
+  - [ ] Download PCAP (Queued)
 
 ## Future Goals
 - Implement XGBoost (Flow-based) and Transformer (Sequence-based) layers.
 - Generate SHAP/Attention maps for explainability.
+- Scale extraction to all 380+ Botnet partitions.
+
 
