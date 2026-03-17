@@ -36,30 +36,49 @@
    - Integrated `ip.ttl`, `tcp.window_size_value`, `packet_direction`, and `payload_ratio`.
    - Switched to **session-based sliding windows** to capture long-term attack behavior.
 
+## Status: Day 3 Complete (2026-03-17)
+
+### ✅ Accomplishments
+1. **Large Dataset Processing (Brute Force - Friday-23)**:
+   - Successfully unzipped 65GB `Friday-23-02-2018-pcap.zip` (450 PCAP files).
+   - Fixed `extract_pcap.ps1` to correctly handle subfolders and trial limits.
+   - Extracted features from 3 trial partitions; built labeled flows (**49,154**) and sequences (**13,778**).
+2. **Analysis & Visualization**:
+   - Generated **30 detailed EDA plots** for Friday-23 (Protocols, Packet Rates, Port Entropy).
+   - Created visual `walkthrough.md` in the artifact directory.
+3. **Data Quality & Integrity**:
+   - Identified and skipped corrupted files in `Friday-16`.
+   - Verified 100% labeling consistency across processed trial partitions.
+4. **Project Documentation**:
+   - Updated `README.md` with extensive project architecture and data mapping details.
+
 ### 📊 Dataset Processing Checklist
 - [x] **Friday-02-03-2018 (Botnet)**: 
   - [x] Download PCAP
   - [x] Unzip Archive
-  - [/] Feature Extraction (In progress - 3 partitions trial complete)
-  - [/] EDA & Dataset Building
-- [/] **Friday-16-02-2018 (DDoS)**:
-  - [x] Download Logs
-  - [/] Download PCAP (aria2 downloading)
+  - [x] Feature Extraction (3 partitions trial complete)
+  - [x] EDA & Dataset Building
+- [x] **Friday-16-02-2018 (DDoS)**:
+  - [x] Download PCAP
+  - [x] Unzip Archive
+  - [x] Process healthy partitions (Trial complete)
+- [x] **Friday-23-02-2018 (Brute Force)**:
+  - [x] Download PCAP
+  - [x] Unzip Archive (65GB)
+  - [x] Feature Extraction & Building (3 partitions trial complete)
+  - [x] EDA Generation
 - [/] **Tuesday-20-02-2018 (DDoS)**:
   - [/] Download PCAP (pcap.rar aria2 downloading)
-- [ ] **Friday-23-02-2018 (Brute Force)**:
-  - [x] Download Logs
-  - [ ] Download PCAP (Queued)
-- [ ] **Thursday Folders (Infiltration/Web)**:
-  - [x] Download Logs
-  - [ ] Download PCAP (Queued)
-- [ ] **Wednesday Folders (DoS/SQL)**:
-  - [ ] Download Logs (Queued)
-  - [ ] Download PCAP (Queued)
+- [ ] **Thursday-01-03-2018 (Infiltration)**:
+  - [/] Download PCAP (aria2 downloading)
+- [ ] **Other Folders (Queued)**:
+  - [ ] Thursday-15-02-2018
+  - [ ] Thursday-22-02-2018
+  - [ ] Wednesday Folders
 
 ## Future Goals
-- Implement XGBoost (Flow-based) and Transformer (Sequence-based) layers.
+- Scale extraction to high-volume partitions (e.g. `UCAP...part1.csv` is 18M+ rows).
+- Implement XGBoost (Flow-based) and Transformer (Sequence-based) training scripts.
 - Generate SHAP/Attention maps for explainability.
-- Scale extraction to all 380+ Botnet partitions.
 
 
