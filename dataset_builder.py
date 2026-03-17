@@ -42,14 +42,26 @@ def build_labeled_dataset():
     if attack_logs is None:
         print("Attack logs not found. Proceeding without labels.")
 
-    csv_files = glob.glob(os.path.join(INPUT_DIR, "*.csv"))
+    # Recursive search for CSV files
+    csv_files = []
+    for root, _, files in os.walk(INPUT_DIR):
+        for f in files:
+            if f.endswith(".csv"):
+                csv_files.append(os.path.join(root, f))
+                
     if not csv_files:
         print(f"No CSV files found in {INPUT_DIR}. Please run extraction first.")
         return
 
     for file_path in tqdm(csv_files, desc="Building datasets"):
         file_name = os.path.basename(file_path)
-        print(f"\nProcessing {file_name}...")
+        
+        # Determine relative subdirectory to maintain structure
+        rel_path = os.path.relpath(os.path.dirname(file_path), INPUT_DIR)
+        target_dir = os.path.join(OUTPUT_DIR, rel_path)
+        os.makedirs(target_dir, exist_ok=True)
+        
+        print(f"\nProcessing {file_name} in {rel_path}...")
         
         try:
             df = pd.read_csv(file_path)
@@ -85,18 +97,12 @@ def build_labeled_dataset():
                 df['tcp.flags'] = df['tcp.flags'].apply(
                     lambda x: int(str(x), 16) if pd.notna(x) and str(x).startswith('0x') else (int(x) if pd.notna(x) and str(x).isdigit() else 0)
                 )
-
-            # Basic extraction of payload if present, else length heuristic
-            if 'tcp.payload' in df.columns or 'udp.payload' in df.columns:
-                # Real payload size calculation would go here if extracted, but let's approximate
-                # ratio if actual payloads weren't extracted properly by tshark in raw form
-                pass
             
             # Approximate payload length ratio (assuming standard IPv4 + TCP headers = ~40 bytes)
             df['payload_ratio'] = np.where(df['frame.len'] > 40, (df['frame.len'] - 40) / df['frame.len'], 0.0)
 
             print("  Building Flow Dataset (XGBoost)...")
-            # 2. Flow Aggregation (XGBoost) - Still 5-tuple for traditional ML accuracy
+            # 2. Flow Aggregation (XGBoost)
             flow_cols = ['ip.src', 'ip.dst', 'ip.proto', 'tcp.srcport', 'tcp.dstport']
             flows = df.groupby(flow_cols).agg({
                 'frame.len': ['count', 'sum', 'mean', 'std'],
@@ -110,15 +116,13 @@ def build_labeled_dataset():
             flows['flow_duration_sec'] = (flows['timestamp_max'] - flows['timestamp_min']).dt.total_seconds()
             flows['packet_rate'] = flows['frame.len_count'] / flows['flow_duration_sec'].replace(0, 0.001)
             
-            flow_output = os.path.join(OUTPUT_DIR, f"{file_name.replace('.csv', '')}_flows.parquet")
+            flow_output = os.path.join(target_dir, f"{file_name.replace('.csv', '')}_flows.parquet")
             flows.to_parquet(flow_output)
             print(f"  -> Saved {len(flows)} flows to {flow_output}")
 
             print("  Building Session-based Sequence Dataset (Transformer)...")
             # 3. Session Sequence Generation with Sliding Windows
-            # Group by Session (Src IP, Dst IP) to capture multi-port behavior over long term
             session_cols = ['ip.src', 'ip.dst']
-            
             seq_features = ['frame.len', 'ip.proto', 'tcp.srcport', 'tcp.dstport', 
                             'tcp.flags', 'ip.ttl', 'tcp.window_size_value', 'packet_direction', 'payload_ratio']
             
@@ -127,12 +131,9 @@ def build_labeled_dataset():
             
             for session_id, group in tqdm(df.groupby(session_cols), desc="  Extracting Sequences", leave=False):
                 group = group.sort_values('timestamp').copy()
-                
-                # Compute packet direction relative to the session initiator (first packet source)
                 initiator = group['ip.src'].iloc[0]
-                group['packet_direction'] = (group['ip.src'] == initiator).astype(int) # 1 = forward, 0 = backward
+                group['packet_direction'] = (group['ip.src'] == initiator).astype(int)
                 
-                # Check if group is long enough for even one stride, if not just pad one window
                 if len(group) <= WINDOW_SIZE:
                     seq_data = group[seq_features].fillna(0).values
                     if len(seq_data) < WINDOW_SIZE:
@@ -141,7 +142,6 @@ def build_labeled_dataset():
                     all_sequences.append(seq_data)
                     all_labels.append(group['label'].mode()[0])
                 else:
-                    # Sliding Window
                     for start_idx in range(0, len(group) - WINDOW_SIZE + 1, STRIDE):
                         window = group.iloc[start_idx : start_idx + WINDOW_SIZE]
                         seq_data = window[seq_features].fillna(0).values
@@ -153,7 +153,7 @@ def build_labeled_dataset():
                 'label': all_labels
             })
             
-            seq_output = os.path.join(OUTPUT_DIR, f"{file_name.replace('.csv', '')}_sequences.parquet")
+            seq_output = os.path.join(target_dir, f"{file_name.replace('.csv', '')}_sequences.parquet")
             seq_df.to_parquet(seq_output)
             print(f"  -> Saved {len(seq_df)} sliding-window sequences to {seq_output}")
 
@@ -162,3 +162,4 @@ def build_labeled_dataset():
 
 if __name__ == "__main__":
     build_labeled_dataset()
+

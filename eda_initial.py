@@ -14,7 +14,13 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def analyze_dataset():
     print(f"Searching for extracted features in {EXTRACTED_DATA_DIR}...")
-    csv_files = glob.glob(os.path.join(EXTRACTED_DATA_DIR, "*.csv"))
+    
+    # Recursive search for CSV files
+    csv_files = []
+    for root, _, files in os.walk(EXTRACTED_DATA_DIR):
+        for f in files:
+            if f.endswith(".csv"):
+                csv_files.append(os.path.join(root, f))
     
     if not csv_files:
         print("No CSV files found. Please run extraction first.")
@@ -22,7 +28,13 @@ def analyze_dataset():
 
     for file_path in tqdm(csv_files, desc="Processing files"):
         file_name = os.path.basename(file_path)
-        print(f"\nAnalyzing {file_name}...")
+        
+        # Determine relative subdirectory to maintain structure
+        rel_path = os.path.relpath(os.path.dirname(file_path), EXTRACTED_DATA_DIR)
+        target_dir = os.path.join(OUTPUT_DIR, rel_path)
+        os.makedirs(target_dir, exist_ok=True)
+        
+        print(f"\nAnalyzing {file_name} in {rel_path}...")
         
         try:
             # Load data
@@ -30,7 +42,6 @@ def analyze_dataset():
             
             # Basic stats
             print(f"Dataset Shape: {df.shape}")
-            print(f"Missing Values:\n{df.isnull().sum()}")
             
             # --- Plotting ---
             
@@ -40,20 +51,19 @@ def analyze_dataset():
             plt.title(f"Packet Size Distribution - {file_name}")
             plt.xlabel("Packet Size (bytes)")
             plt.ylabel("Count")
-            plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_packet_sizes.png"))
+            plt.savefig(os.path.join(target_dir, f"{file_name}_packet_sizes.png"))
             plt.close()
 
             # 2. Protocol Distribution
             if 'ip.proto' in df.columns:
                 plt.figure(figsize=(10, 6))
-                # Map common protocols for readability
                 proto_map = {6: 'TCP', 17: 'UDP', 1: 'ICMP'}
                 mapped_protos = df['ip.proto'].map(lambda x: proto_map.get(x, f'Other({x})'))
                 sns.countplot(x=mapped_protos, order=mapped_protos.value_counts().index)
                 plt.title(f"Protocol Distribution - {file_name}")
                 plt.xlabel("Protocol")
                 plt.ylabel("Count")
-                plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_protocols.png"))
+                plt.savefig(os.path.join(target_dir, f"{file_name}_protocols.png"))
                 plt.close()
 
             # 3. Time-based features
@@ -69,7 +79,7 @@ def analyze_dataset():
                 packet_rate.plot()
                 plt.title(f"Packet Rate Analytics - {file_name}")
                 plt.ylabel("Packets / Second")
-                plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_packet_rate.png"))
+                plt.savefig(os.path.join(target_dir, f"{file_name}_packet_rate.png"))
                 plt.close()
 
                 # Inter-arrival Time
@@ -79,10 +89,10 @@ def analyze_dataset():
                 plt.title(f"Inter-arrival Time Distribution - {file_name}")
                 plt.xlabel("Seconds")
                 plt.ylabel("Count")
-                plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_interarrival.png"))
+                plt.savefig(os.path.join(target_dir, f"{file_name}_interarrival.png"))
                 plt.close()
                 
-                # Flow Duration Distribution (estimate via basic groupby)
+                # Flow Duration Distribution
                 if all(col in df.columns for col in ['ip.src', 'ip.dst', 'ip.proto', 'tcp.srcport', 'tcp.dstport']):
                     df_reset = df.reset_index()
                     df_reset.fillna({'tcp.srcport': 0, 'tcp.dstport': 0}, inplace=True)
@@ -90,11 +100,11 @@ def analyze_dataset():
                     durations = (flows.max() - flows.min()).dt.total_seconds()
                     
                     plt.figure(figsize=(10, 6))
-                    durations[durations > 0].hist(bins=100) # Only plot flows > 0s
+                    durations[durations > 0].hist(bins=100)
                     plt.title(f"Flow Duration Distribution - {file_name}")
                     plt.xlabel("Duration (Seconds)")
                     plt.ylabel("Count")
-                    plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_flow_duration.png"))
+                    plt.savefig(os.path.join(target_dir, f"{file_name}_flow_duration.png"))
                     plt.close()
 
                 df.reset_index(inplace=True)
@@ -105,7 +115,7 @@ def analyze_dataset():
                 plt.figure(figsize=(12, 6))
                 sns.barplot(x=top_src.values, y=top_src.index)
                 plt.title(f"Top 20 Source IPs - {file_name}")
-                plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_top_src_ips.png"))
+                plt.savefig(os.path.join(target_dir, f"{file_name}_top_src_ips.png"))
                 plt.close()
                 
             if 'ip.dst' in df.columns:
@@ -113,7 +123,7 @@ def analyze_dataset():
                 plt.figure(figsize=(12, 6))
                 sns.barplot(x=top_dst.values, y=top_dst.index)
                 plt.title(f"Top 20 Destination IPs - {file_name}")
-                plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_top_dst_ips.png"))
+                plt.savefig(os.path.join(target_dir, f"{file_name}_top_dst_ips.png"))
                 plt.close()
 
             # 5. Port Analysis & Entropy
@@ -123,14 +133,13 @@ def analyze_dataset():
                 sns.barplot(x=top_ports.index, y=top_ports.values)
                 plt.title(f"Top 20 Destination Ports - {file_name}")
                 plt.xticks(rotation=45)
-                plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_top_ports.png"))
+                plt.savefig(os.path.join(target_dir, f"{file_name}_top_ports.png"))
                 plt.close()
                 
-                # Destination Port Entropy over Time
+                # Destination Port Entropy
                 if 'timestamp' in df.columns:
                     df_ports = df.dropna(subset=['tcp.dstport']).copy()
                     df_ports.set_index('timestamp', inplace=True)
-                    # Resample every minute and calculate entropy of port distribution
                     port_entropy = df_ports['tcp.dstport'].resample('1min').apply(
                         lambda x: entropy(x.value_counts(normalize=True)) if not x.empty else 0
                     )
@@ -138,7 +147,7 @@ def analyze_dataset():
                     port_entropy.plot()
                     plt.title(f"Destination Port Entropy (1Min Bins) - {file_name}")
                     plt.ylabel("Entropy")
-                    plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_port_entropy.png"))
+                    plt.savefig(os.path.join(target_dir, f"{file_name}_port_entropy.png"))
                     plt.close()
                     df_ports.reset_index(inplace=True)
 
@@ -147,7 +156,7 @@ def analyze_dataset():
                 plt.figure(figsize=(10, 6))
                 sns.countplot(data=df, y='tcp.flags', order=df['tcp.flags'].value_counts().iloc[:10].index)
                 plt.title(f"Top 10 TCP Flags - {file_name}")
-                plt.savefig(os.path.join(OUTPUT_DIR, f"{file_name}_tcp_flags.png"))
+                plt.savefig(os.path.join(target_dir, f"{file_name}_tcp_flags.png"))
                 plt.close()
 
         except Exception as e:
@@ -155,3 +164,4 @@ def analyze_dataset():
 
 if __name__ == "__main__":
     analyze_dataset()
+

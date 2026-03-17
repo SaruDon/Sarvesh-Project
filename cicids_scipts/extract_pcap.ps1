@@ -53,8 +53,6 @@ if ($pcaps.Count -eq 0) {
 
 $count = 0
 foreach ($pcap in $pcaps) {
-    if ($count -ge 3) { break }
-    $count++
     $basename = $pcap.BaseName
     if ($pcap.Extension -ne ".pcap" -and $pcap.Extension -ne "") {
         $basename = "$($pcap.BaseName)$($pcap.Extension)"
@@ -65,6 +63,9 @@ foreach ($pcap in $pcaps) {
         Write-Host "SKIP: $basename.csv already exists."
         continue
     }
+
+    if ($count -ge 3) { break }
+    $count++
 
     Write-Host "Processing $basename..."
     

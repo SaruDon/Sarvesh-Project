@@ -1,36 +1,79 @@
-# Hybrid NIDS Project: CIC-IDS-2018 Implementation
+# 🛡️ Sarvesh NIDS Project: CIC-IDS-2018 Analyzer
 
-## Project Context
-Developing a state-of-the-art Hybrid Network Intrusion Detection System (NIDS) using:
-1. **XGBoost Layer**: Flow-based detection.
-2. **Transformer Layer**: Packet Sequence patterns.
-3. **Explainability**: SHAP/Attention maps.
+Welcome to the Network Intrusion Detection System (NIDS) project. This repository is designed to download, extract, preprocess, and analyze the **CIC-IDS-2018** dataset, producing high-quality labeled data for machine learning models (XGBoost and Transformers).
 
-## Hardware & Environment
-- **Workstation**: i9 + 32GB RAM.
-- **Local Data Storage**: `/mnt/cicids2018/` (Mounted Windows NTFS Partition).
-- **Remote Data Source**: `s3://cse-cic-ids2018/Original Network Traffic and Log data`
-- **Workspace**: `/home/a10/Desktop/Sarvesh Project` (Git Root).
+---
 
-## Key Files
-- `run_nids_pipeline.sh`: Master entry point (resumes download, extracts, runs EDA).
-- `extract_pcap.sh`: Updated tshark script (includes UDP).
-- `attack_logs.csv`: Official attack schedule for Friday, Mar 2, 2018.
-- `eda_initial.py`: Statistical analysis.
-- `dataset_builder.py`: Flow/Sequence generation.
+## 📂 Project Structure Explained
 
-## Current State
-- **PCAP Download**: In progress on /mnt/ (approx. 2-3 hours remaining).
-- **Attack Schedule**: 10:02-11:02 (Botnet), 14:00-15:00 (Botnet).
+### 📁 `cicids_scripts/` (The Engine ⚙️)
+Contains PowerShell scripts to automate the data pipeline.
+*   **`download_missing.ps1`**: Our smart downloader. It fetches missing dataset parts from AWS/S3 using `aria2c` for high-speed, resumed downloads.
+*   **`extract_pcap.ps1`**: The feature extractor. It takes raw network traffic (`.pcap`) and uses `tshark` (Wireshark) to turn them into structured CSV files.
+*   **`run_nids_pipeline.ps1`**: The master script. It’s a wrapper meant to run the whole process from start to finish.
 
-## Download Progress Reference (Snapshot 2026-03-13)
-```text
-[#8beb1c 16GiB/41GiB(38%) CN:8 DL:10MiB ETA:43m2s]
-[#8beb1c 16GiB/41GiB(40%) CN:8 DL:11MiB ETA:37m52s]
-[#8beb1c 17GiB/41GiB(41%) CN:8 DL:9.4MiB ETA:44m]
-[#8beb1c 17GiB/41GiB(43%) CN:8 DL:9.8MiB ETA:41m7s]
-[#8beb1c 18GiB/41GiB(44%) CN:8 DL:7.0MiB ETA:56m41s]
-[#8beb1c 18GiB/41GiB(45%) CN:8 DL:11MiB ETA:34m30s]
-[#8beb1c 19GiB/41GiB(46%) CN:8 DL:6.7MiB ETA:56m12s]
-[#8beb1c 19GiB/41GiB(47%) CN:8 DL:5.1MiB ETA:1h12m22s]
-```
+### 📁 `extracted_features/` (Raw Features 📊)
+This folder holds the CSV files created by `extract_pcap.ps1`. 
+*   These are **unlabeled** raw values like IP addresses, ports, protocol IDs, and packet lengths.
+*   They serve as the input for our Python preprocessing scripts.
+
+### 📁 `processed_dataset/` (Machine Learning Ready 🚀)
+The "Clean" data. Contains Parquet files ready for training. It splits data into two types:
+*   **Flows (`_flows.parquet`)**: Aggregated traffic statistics. Perfect for models like **XGBoost**.
+*   **Sequences (`_sequences.parquet`)**: Sliding-window time-series data. Specifically designed for **Transformer** or **LSTM** models.
+
+### 📁 `analysis_results/` (Exploratory Data Analysis 🔍)
+Visual evidence! This folder contains PNG plots generated from the data.
+
+---
+
+## 🔄 The Data Transformation Journey (States)
+
+1.  **Stage 1: Raw Download (`.zip` / `.rar`)**
+    *   *What we have*: Compressed archive files (e.g., `Friday-23-02-2018-pcap.zip`).
+    *   *Scale*: Massive (40GB - 60GB per day).
+2.  **Stage 2: Unzipped Data (`.pcap`)**
+    *   *What we have*: Binary packet capture files. These are "raw wire traffic."
+    *   *Location*: `C:\Users\Student\cicids2018\[Date]\pcap\`
+3.  **Stage 3: Feature Extraction (`.csv`)**
+    *   *What we have*: Structured text data. Every row is a packet, but there are **no labels** (we don't know if it's an attack yet).
+    *   *Location*: `extracted_features/[Date]/`
+4.  **Stage 4: Labeled Preprocessing (`.parquet`)**
+    *   *What we have*: Binary, compressed data with **Attack Labels** added. Optimized for Python and AI training.
+    *   *Location*: `processed_dataset/[Date]/`
+5.  **Stage 5: EDA & Insights (`.png`)**
+    *   *What we have*: Visual reports showing attack spikes, protocol usage, and traffic patterns.
+    *   *Location*: `analysis_results/[Date]/`
+
+---
+
+## 🗺️ Data Mapping (Which file comes from where?)
+
+The project maintains a 1-to-1 folder structure to help you track your data:
+
+| Dataset Day | Raw Zip Source | Extracted CSV Folder | Processed Parquet Folder |
+| :--- | :--- | :--- | :--- |
+| **Botnet Day** | `Friday-02-03-2018-pcap.zip` | `extracted_features/Friday-02...` | `processed_dataset/Friday-02...` |
+| **DDoS Day 1** | `Friday-16-02-2018-pcap.zip` | `extracted_features/Friday-16...` | `processed_dataset/Friday-16...` |
+| **Brute Force** | `Friday-23-02-2018-pcap.zip` | `extracted_features/Friday-23...` | `processed_dataset/Friday-23...` |
+| ... and so on | ... | ... | ... |
+
+*   **Example**: If you want the labeled data for the **Brute Force** attack on **Feb 23**, look for `processed_dataset/Friday-23-02-2018/` and you will see the `.parquet` files generated specifically from that day's traffic.
+
+---
+
+## 🛠️ Key Scripts & Usage
+
+### 🐍 `dataset_builder.py`
+**What it does**: Takes the raw CSVs from `extracted_features`, looks at `attack_logs.csv` to know when attacks happened, and creates the **labeled** Parquet files in `processed_dataset`.
+
+### 🐍 `eda_initial.py`
+**What it does**: Automates the data science! It reads the extracted features and creates every plot you find in `analysis_results`.
+
+### 📄 `attack_logs.csv`
+**What it does**: This is our "Cheat Sheet." It lists the dates, times, and target IPs for every attack in the dataset. Without this, we wouldn't know which traffic is "Benign" (normal) and which is an "Attack."
+
+---
+
+## 📍 Dataset Location
+Note that the raw, heavy dataset files (GBs of PCAPs) are stored outside this repository at `C:\Users\Student\cicids2018` to keep the codebase lightweight and clean.

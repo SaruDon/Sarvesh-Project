@@ -1,1 +1,0 @@
-﻿frame.number,frame.time_relative,frame.len,ip.src,ip.dst,ip.proto,tcp.srcport,tcp.dstport,tcp.flags,udp.srcport,udp.dstport
