@@ -82,3 +82,7 @@
 - Generate SHAP/Attention maps for explainability.
 
 
+d   |stat|avg speed  |path/URI
+======+====+===========+=======================================================
+7742a7|OK  |    11MiB/s|C:/Users/Student/cicids2018/Thursday-01-03-2018-pcap.zip
+downloaded now process it

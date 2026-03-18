@@ -26,6 +26,10 @@ def analyze_dataset():
         print("No CSV files found. Please run extraction first.")
         return
 
+    # Prioritize Thursday-01-03-2018
+    csv_files.sort(key=lambda x: "Thursday-01-03-2018" not in x)
+
+    print(f"Found {len(csv_files)} total files. Starting analysis...")
     for file_path in tqdm(csv_files, desc="Processing files"):
         file_name = os.path.basename(file_path)
         
