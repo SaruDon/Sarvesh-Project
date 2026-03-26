@@ -10,9 +10,10 @@ from functools import partial
 import argparse
 
 # Configuration
-INPUT_DIR = "extracted_features"
-OUTPUT_DIR = "processed_dataset"
-ATTACK_LOGS = "attack_logs.csv"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INPUT_DIR = os.path.join(BASE_DIR, "extracted_features")
+OUTPUT_DIR = os.path.join(BASE_DIR, "processed_dataset")
+ATTACK_LOGS = os.path.join(BASE_DIR, "data", "attack_logs.csv")
 WINDOW_SIZE = 200
 STRIDE = 50
 MAX_SEQS_PER_FILE = 50000 
@@ -55,7 +56,10 @@ def process_single_csv(file_path, attack_logs):
         return f"Skipped {file_name} (already processed)"
 
     try:
-        df = pd.read_csv(file_path)
+        try:
+            df = pd.read_csv(file_path, encoding='utf-8-sig')
+        except UnicodeDecodeError:
+            df = pd.read_csv(file_path, encoding='utf-16')
         
         if 'frame.time_epoch' not in df.columns:
             return f"Skipped {file_name}: No frame.time_epoch found."
@@ -149,25 +153,30 @@ def process_single_csv(file_path, attack_logs):
     except Exception as e:
         return f"Error processing {file_name}: {e}"
 
-def build_labeled_dataset(workers=DEFAULT_WORKERS, limit=None):
+def build_labeled_dataset(workers=DEFAULT_WORKERS, limit=None, day_filter=None):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     print(f"Loading attack logs from {ATTACK_LOGS}...")
     attack_logs = parse_attack_logs(ATTACK_LOGS)
 
     csv_files = []
     for root, _, files in os.walk(INPUT_DIR):
+        if day_filter and day_filter not in root:
+            continue
         for f in files:
             if f.endswith(".csv"):
                 csv_files.append(os.path.join(root, f))
                 
-    # Prioritize Friday-02
-    csv_files.sort(key=lambda x: "Friday-02-03-2018" not in x)
+    # Prioritize if no filter
+    if not day_filter:
+        csv_files.sort(key=lambda x: "Friday-02-03-2018" not in x)
+    else:
+        print(f"Filtering for day: {day_filter}")
     
     if limit:
         csv_files = csv_files[:limit]
                 
     if not csv_files:
-        print(f"No CSV files found in {INPUT_DIR}.")
+        print(f"No CSV files found in {INPUT_DIR} (Filter: {day_filter}).")
         return
 
     print(f"Found {len(csv_files)} files. Starting parallel processing with {workers} workers...")
@@ -199,6 +208,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Parallel Dataset Builder")
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS, help="Number of parallel workers")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of files to process")
+    parser.add_argument("--day", type=str, default=None, help="Process only specific day folder")
     args = parser.parse_args()
     
-    build_labeled_dataset(workers=args.workers, limit=args.limit)
+    build_labeled_dataset(workers=args.workers, limit=args.limit, day_filter=args.day)

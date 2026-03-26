@@ -6,11 +6,20 @@ Welcome to the Network Intrusion Detection System (NIDS) project. This repositor
 
 ## 📂 Project Structure Explained
 
-### 📁 `cicids_scripts/` (The Engine ⚙️)
-Contains PowerShell scripts to automate the data pipeline.
-*   **`download_missing.ps1`**: Our smart downloader. It fetches missing dataset parts from AWS/S3 using `aria2c` for high-speed, resumed downloads.
-*   **`extract_pcap.ps1`**: The feature extractor. It takes raw network traffic (`.pcap`) and uses `tshark` (Wireshark) to turn them into structured CSV files.
-*   **`run_nids_pipeline.ps1`**: The master script. It’s a wrapper meant to run the whole process from start to finish.
+### 📁 `src/` (The Engine ⚙️)
+Contains the core Python logic for processing and analysis.
+*   **`dataset_builder.py`**: The labeling engine. Turns raw CSVs into labeled Parquet files.
+*   **`eda_labeled.py`**: The visualizer. Generates all plots and statistical reports.
+*   **`diagnose_ids.py`**: The auditor. Identifies victim IPs and clock drifts.
+
+### 📁 `scripts/` (Automation & Helpers 🛠️)
+Consolidate extraction, downloading, and auxiliary utilities.
+- **`extraction/`**: PowerShell scripts for `tshark` processing.
+- **`run_nids_pipeline.ps1`**: The master wrapper script.
+- **`legacy/`**: Earlier versions of EDA and diagnostic tools.
+
+### 📁 `data/` (Knowledge & Logs 📄)
+- **`attack_logs.csv`**: The "Cheat Sheet" containing dates, times, and target IPs for every attack.
 
 ### 📁 `extracted_features/` (Raw Features 📊)
 This folder holds the CSV files created by `extract_pcap.ps1`. 
