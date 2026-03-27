@@ -11,10 +11,11 @@ foreach ($day in $days) {
     
     foreach ($f in $files) {
         $out = $f.FullName + ".csv"
-        if (!(Test-Path $out)) {
+        if ($f.Length -gt 1MB) {
             Write-Host "  Extracting $($f.Name)..."
             try {
-                & $tshark -r $f.FullName -T fields -E "header=y" -E "separator=," -E "quote=d" -e frame.time_epoch -e ip.src -e ip.dst -e ip.proto -e ip.ttl -e tcp.srcport -e tcp.dstport -e tcp.flags -e tcp.window_size_value -e udp.srcport -e udp.dstport -e frame.len > $out
+                $cmd = "`"C:\Program Files\Wireshark\tshark.exe`" -r `"$($f.FullName)`" -T fields -E header=y -E separator=, -E quote=d -e frame.time_epoch -e ip.src -e ip.dst -e ip.proto -e ip.ttl -e tcp.srcport -e tcp.dstport -e tcp.flags -e tcp.window_size_value -e udp.srcport -e udp.dstport -e frame.len > `"$out`""
+                cmd /c $cmd
             } catch {
                 Write-Host "    Error on $($f.Name): $_"
             }

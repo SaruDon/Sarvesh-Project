@@ -39,8 +39,10 @@ def audit_day(day_name):
         print("  Attacks: NONE FOUND")
 
 if __name__ == "__main__":
-    days = ["Wednesday-14-02-2018", "Thursday-15-02-2018", "Thursday-01-03-2018", "Friday-23-02-2018", "Friday-02-03-2018", "Friday-16-02-2018"]
-    for day in days:
+    target_days = [
+        "Wednesday-14-02-2018",
+        "Wednesday-21-02-2018",
+        "Thursday-15-02-2018",
+        "Thursday-01-03-2018", "Friday-23-02-2018", "Friday-02-03-2018", "Friday-16-02-2018"]
+    for day in target_days:
         audit_day(day)
-
-

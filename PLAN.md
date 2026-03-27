@@ -120,6 +120,47 @@ The ultimate objective is to create a **Hybrid NIDS** that uses the CIC-IDS-2018
   - [ ] Thursday-22-02-2018
   - [ ] Wednesday-14-02-2018 (Missing Source)
 
+---
+
+## Status: Day 5 - Recovery & Broadened Labeling (2026-03-27)
+
+### ✅ Accomplishments
+1. **Wednesday-14 Recovery COMPLETE**:
+   - **Diagnosis**: Identified that trailing dots in IP prefixes (`172.31.6.`) caused labeling failures.
+   - **Resolution**: Broadened prefixes to `172.31.64` (subnet-level) and re-ran the forced builder.
+   - **Result**: Successfully recovered **1,006,885 SSH-BruteForce** and **237,039 FTP-BruteForce** flows. Verified with 100% accuracy.
+2. **Wednesday-21 Background Recovery**:
+   - Extracted 50GB archive; identified 439 background traffic segments (`capDESKTOP-AN3U28N`).
+   - Initiated `tshark` feature extraction (fixing PowerShell parsing via CMD-based execution). 
+3. **Thursday-15 DoS Segment Recovery**:
+   - Extracted 444 `UCAP` attack fragments and converted to CSV features (899 total files).
+   - Currently auditing fragments to verify presence of Slowloris/GoldenEye traffic (IP: `172.31.67.22`).
+4. **Tooling & Orchestration**:
+   - Deployed `batch_tshark_extraction.ps1` using `cmd /c` to ensure reliable CSV generation on Windows.
+   - Updated `audit_parquet.py` to include real-time multi-day label tracking.
+
+### 📊 Dataset Processing Checklist
+- [x] **Wednesday-14-02-2018 (Brute Force)**: 100% RECOVERED (1.2M attack flows)
+- [ ] **Wednesday-21-02-2018 (DDoS)**:
+  - [x] Extract 50GB Background volume
+  - [/] Batch CSV feature extraction (In Progress)
+  - [ ] Final Labeling & Build
+- [ ] **Thursday-15-02-2018 (DoS)**:
+  - [x] Extract `UCAP` attack fragments
+  - [x] Convert to CSV features (899 files)
+  - [/] Audit & Labeled Build (Next Step)
+- [x] **Friday-16-02-2018 (DDoS)**: COMPLETE (5.1M flows)
+- [/] **Thursday-01-03-2018 (Infiltration)**:
+  - [x] Initial recovery successful
+  - [/] Download full 48GB ZIP for missing sessions (In Progress: ~20 mins left)
+
+---
+
+## 🚀 Next Steps (Resume Here)
+1. **Verify Thursday-15 DoS**: Run `scripts/analyze_recovered_ips.py` to confirm the DoS target IP is present in the `UCAP` CSVs.
+2. **Rebuild Wednesday-21**: Once `batch_tshark_extraction.ps1` finishes (background task), run `src/dataset_builder.py --day Wednesday-21-02-2018 --force`.
+3. **Infiltration Final Recovery**: Once `Thursday-01-03-2018-pcap.zip` finishes downloading, extract and process it to capture the missing 100% of infiltration sessions.
+
 ## Status: Verification (2026-03-26)
 
 ### 📊 Extraction Verification Summary
