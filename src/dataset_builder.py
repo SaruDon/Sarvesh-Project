@@ -41,7 +41,7 @@ def apply_labels(df, attack_logs):
         df.loc[mask, 'label'] = row['Attack_Type']
     return df
 
-def process_single_csv(file_path, attack_logs):
+def process_single_csv(file_path, attack_logs, force=False):
     file_name = os.path.basename(file_path)
     # Determine relative subdirectory to maintain structure
     rel_path = os.path.relpath(os.path.dirname(file_path), INPUT_DIR)
@@ -51,8 +51,8 @@ def process_single_csv(file_path, attack_logs):
     flow_output = os.path.join(target_dir, f"{file_name.replace('.csv', '')}_flows.parquet")
     seq_output = os.path.join(target_dir, f"{file_name.replace('.csv', '')}_sequences.parquet")
 
-    # Skip if both outputs exist
-    if os.path.exists(flow_output) and os.path.exists(seq_output):
+    # Skip if both outputs exist, unless force is True
+    if not force and os.path.exists(flow_output) and os.path.exists(seq_output):
         return f"Skipped {file_name} (already processed)"
 
     try:
@@ -106,6 +106,9 @@ def process_single_csv(file_path, attack_logs):
         }).reset_index()
         
         flows.columns = ['_'.join(col).strip() if isinstance(col, tuple) and col[1] else col[0] for col in flows.columns.values]
+        if 'label_<lambda>' in flows.columns:
+            flows = flows.rename(columns={'label_<lambda>': 'label'})
+
         flows['flow_duration_sec'] = (flows['timestamp_max'] - flows['timestamp_min']).dt.total_seconds()
         flows['packet_rate'] = flows['frame.len_count'] / flows['flow_duration_sec'].replace(0, 0.001)
         
@@ -153,7 +156,7 @@ def process_single_csv(file_path, attack_logs):
     except Exception as e:
         return f"Error processing {file_name}: {e}"
 
-def build_labeled_dataset(workers=DEFAULT_WORKERS, limit=None, day_filter=None):
+def build_labeled_dataset(workers=DEFAULT_WORKERS, limit=None, day_filter=None, force=False):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     print(f"Loading attack logs from {ATTACK_LOGS}...")
     attack_logs = parse_attack_logs(ATTACK_LOGS)
@@ -181,8 +184,8 @@ def build_labeled_dataset(workers=DEFAULT_WORKERS, limit=None, day_filter=None):
 
     print(f"Found {len(csv_files)} files. Starting parallel processing with {workers} workers...")
     
-    # Use partial to pass attack_logs
-    worker_func = partial(process_single_csv, attack_logs=attack_logs)
+    # Use partial to pass attack_logs and force flag
+    worker_func = partial(process_single_csv, attack_logs=attack_logs, force=force)
     
     with mp.Pool(processes=workers) as pool:
         # Use imap_unordered for better feedback with tqdm
@@ -209,6 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS, help="Number of parallel workers")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of files to process")
     parser.add_argument("--day", type=str, default=None, help="Process only specific day folder")
+    parser.add_argument("--force", action="store_true", help="Overwrite existing parquet files")
     args = parser.parse_args()
     
-    build_labeled_dataset(workers=args.workers, limit=args.limit, day_filter=args.day)
+    build_labeled_dataset(workers=args.workers, limit=args.limit, day_filter=args.day, force=args.force)

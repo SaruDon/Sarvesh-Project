@@ -98,6 +98,18 @@ The ultimate objective is to create a **Hybrid NIDS** that uses the CIC-IDS-2018
   - [x] Full Feature Extraction (435 files)
   - [x] Labeled Build & Analysis Report
   - [x] **WALKTHROUGH** (Visual proof generated)
+    - [ ] Thursday-22-02-2018 (Brute Force)
+
+---
+
+### 📝 Documentation & Status Update (27/02/26)
+- **task.md**: Updated with latest recovery milestones.
+- **implementation_plan.md**: Updated with space optimization results.
+
+#### Current System Status:
+- **Wednesday-14**: Extraction is **IN PROGRESS** (38GB ZIP).
+- **Thursday-01**: Recovery download is **IN PROGRESS** (48GB ZIP).
+- **Disk Space**: Stable at **~450 GB** free.
 - [/] **Friday-23-02-2018 (Brute Force)**:
   - [/] Unzip Archive (In Progress: 59GB)
   - [ ] Trial Extraction & Diagnosis

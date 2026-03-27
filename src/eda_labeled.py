@@ -85,14 +85,18 @@ def run_advanced_eda():
     # 4. Time-Series Attack Spikes
     if 'timestamp_min' in df.columns:
         df['dt'] = pd.to_datetime(df['timestamp_min'])
-        df_sorted = df.sort_values('dt')
         
-        # Resample by minute and plot
+        # Memory Guard: Resample/Downsample if too large
         plt.figure(figsize=(15, 7))
         for label in df['label'].unique():
-            subset = df_sorted[df_sorted['label'] == label]
+            subset = df[df['label'] == label]
             if not subset.empty:
-                subset.set_index('dt')['frame.len_count'].resample('1min').sum().plot(label=label)
+                # If subset is huge, sample it to 100k points before resampling
+                if len(subset) > 100000:
+                    subset = subset.sample(100000, random_state=42)
+                
+                subset_sorted = subset.sort_values('dt')
+                subset_sorted.set_index('dt')['frame.len_count'].resample('1min').sum().plot(label=label)
         
         plt.title("Traffic Intensity (Packet Counts) Over Time by Label")
         plt.ylabel("Total Packets per Minute")
