@@ -1,23 +1,25 @@
 # download_missing.ps1 - Resume/download missing CIC-IDS-2018 dataset files
 # Uses aria2c with --continue flag to resume from last checkpoint
 # Skips files that already exist and are complete (no .aria2 sidecar)
+#
+# SMART SKIP LOGIC:
+#   - Friday-16-02-2018: processed_dataset exists -> SKIP
+#   - Friday-23-02-2018: processed_dataset exists -> SKIP
+#   - Friday-02-03-2018: processed_dataset exists -> SKIP
+#   - Thursday-15-02-2018: pcap.zip (41GB) already downloaded -> SKIP pcap, get logs
+#   - Thursday-22-02-2018: pcap.zip (46GB) already downloaded -> SKIP
+#   - Tuesday-20-02-2018:  pcap.rar (41GB) already downloaded -> SKIP
+#   - Wednesday-14-02-2018: processed_dataset exists -> SKIP
+#   - Wednesday-21-02-2018: processed_dataset exists -> SKIP
+#   - Wednesday-28-02-2018: no special skip (logs+pcap needed)
+#   - Thursday-01-03-2018: NO PCAP -> MUST DOWNLOAD
 
 $DOWNLOAD_DIR = "C:\Users\Student\cicids2018"
 $BASE_HTTP = "https://cse-cic-ids2018.s3.amazonaws.com/Original%20Network%20Traffic%20and%20Log%20data"
 
-# All CIC-IDS-2018 dataset days
-# Logs are always "logs.zip" on S3, PCAPs can be "pcap.zip" or "pcap.rar"
-# We save locally as: DayName-pcap.zip and DayName-logs.zip
+# Only days that still need downloading
 $datasets = @(
-    @{ Name = "Wednesday-14-02-2018" },
-    @{ Name = "Thursday-15-02-2018" },
-    # @{ Name = "Friday-16-02-2018" }, # Already processed
-    @{ Name = "Tuesday-20-02-2018" },
-    @{ Name = "Wednesday-21-02-2018" },
-    @{ Name = "Thursday-22-02-2018" },
-    # @{ Name = "Friday-23-02-2018" }, # Skipped (bad dataset)
-    @{ Name = "Wednesday-28-02-2018" }
-    @{ Name = "Thursday-01-03-2018" }
+    @{ Name = "Thursday-01-03-2018" }  # Infiltration - pcap fully missing
 )
 
 function Is-FileComplete {

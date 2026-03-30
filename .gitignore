@@ -7,7 +7,6 @@ __pycache__/
 cicids2018/
 extracted_features/
 processed_dataset/
-analysis_results/
 *.pcap
 *.zip
 *.rar

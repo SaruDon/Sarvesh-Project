@@ -203,3 +203,30 @@ d   |stat|avg speed  |path/URI
 ======+====+===========+=======================================================
 7742a7|OK  |    11MiB/s|C:/Users/Student/cicids2018/Thursday-01-03-2018-pcap.zip
 downloaded now process it
+---
+
+## Day 6 - 2026-03-30
+
+### Thursday-15-02-2018: Investigation Complete (Benign-Only - Accepted)
+
+**Findings:**
+- Extracted Thursday-15-02-2018-pcap.zip (38 GB). All UCAP captures begin at 12:25 UTC,
+  but the Slowloris attack window was 10:59-11:40 UTC - entirely before capture start.
+- Rebuilt dataset: 4,688,402 Benign flows - 0 attack flows.
+- Investigated synthetic transfer (Option A): Ran statistical compatibility verifier.
+  Wednesday-21 DDoS-HOIC is INCOMPATIBLE as a Slowloris donor:
+    packet_rate: 1000 pkt/s vs expected 0.1-10 pkt/s  [FAIL]
+    flow_duration: 0 sec vs expected 60-900 sec        [FAIL]
+  Score: 2/4 = 50%  - INCOMPATIBLE
+
+**Decision:** Thursday-15 stays Benign-only. Sequence model will learn DoS-Slowloris
+from Thursday-22 (which has scheduled DoS attacks) and cross-generalize at inference.
+No synthetic fabrication - dependency patterns preserved.
+
+---
+
+### Thursday-22-02-2018: Processing Started
+
+- Thursday-22-02-2018-pcap.zip (46 GB) already on disk.
+- Expected attacks: DoS-Hulk, DoS-GoldenEye, DoS-Slowloris (per CIC-IDS-2018 schedule).
+- Status: Extracting zip -> tshark extraction -> dataset_builder in progress.
