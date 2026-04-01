@@ -17,9 +17,9 @@
 $DOWNLOAD_DIR = "C:\Users\Student\cicids2018"
 $BASE_HTTP = "https://cse-cic-ids2018.s3.amazonaws.com/Original%20Network%20Traffic%20and%20Log%20data"
 
-# Only days that still need downloading
+# Only days that still need downloading based on SMART SKIP LOGIC
 $datasets = @(
-    @{ Name = "Thursday-01-03-2018" }  # Infiltration - pcap fully missing
+    @{ Name = "Thursday-15-02-2018"; GetPcap = $true; GetLogs = $false }
 )
 
 function Is-FileComplete {
@@ -64,101 +64,106 @@ foreach ($ds in $datasets) {
     Write-Host "--- $dayName ---" -ForegroundColor Yellow
     
     # ========== LOGS ==========
-    $localLog = Join-Path $DOWNLOAD_DIR "$dayName-logs.zip"
-    $logUrl = "$BASE_HTTP/$dayName/logs.zip"
-    
-    if (Is-FileComplete $localLog) {
-        $sizeMB = [math]::Round((Get-Item $localLog).Length / 1MB, 1)
-        Write-Host "  SKIP: $dayName-logs.zip (${sizeMB} MB, complete)" -ForegroundColor Green
-        $skipped++
+    if ($ds.GetLogs -eq $false) {
+        Write-Host "  SKIP: Logs (per smart logic)" -ForegroundColor Cyan
     } else {
-        $isResume = (Test-Path $localLog) -or (Test-Path "$localLog.aria2")
-        if ($isResume) {
-            Write-Host "  RESUME: $dayName-logs.zip ..." -ForegroundColor Magenta
-            $resumed++
+        $localLog = Join-Path $DOWNLOAD_DIR "$dayName-logs.zip"
+        $logUrl = "$BASE_HTTP/$dayName/logs.zip"
+        
+        if (Is-FileComplete $localLog) {
+            $sizeMB = [math]::Round((Get-Item $localLog).Length / 1MB, 1)
+            Write-Host "  SKIP: $dayName-logs.zip (${sizeMB} MB, complete)" -ForegroundColor Green
+            $skipped++
         } else {
-            Write-Host "  DOWNLOAD: $dayName-logs.zip ..." -ForegroundColor White
-        }
-        
-        & aria2c --continue=true `
-                 --dir="$DOWNLOAD_DIR" `
-                 --out="$dayName-logs.zip" `
-                 --max-connection-per-server=8 `
-                 --split=8 `
-                 --min-split-size=10M `
-                 --file-allocation=none `
-                 --auto-file-renaming=false `
-                 --allow-overwrite=false `
-                 "$logUrl"
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "  DONE: $dayName-logs.zip" -ForegroundColor Green
-            $downloaded++
-        } else {
-            Write-Host "  FAILED: $dayName-logs.zip (exit: $LASTEXITCODE)" -ForegroundColor Red
-            $failed++
-        }
-    }
-    
-    # ========== PCAP ==========
-    # Try both .zip and .rar extensions; S3 filenames are just "pcap.zip" or "pcap.rar"
-    $localPcapZip = Join-Path $DOWNLOAD_DIR "$dayName-pcap.zip"
-    $localPcapRar = Join-Path $DOWNLOAD_DIR "$dayName-pcap.rar"
-    
-    # Check if either complete pcap already exists
-    if ((Is-FileComplete $localPcapZip) -or (Is-FileComplete $localPcapRar)) {
-        $existingFile = if (Is-FileComplete $localPcapZip) { $localPcapZip } else { $localPcapRar }
-        $sizeMB = [math]::Round((Get-Item $existingFile).Length / 1MB, 1)
-        $existName = Split-Path $existingFile -Leaf
-        Write-Host "  SKIP: $existName (${sizeMB} MB, complete)" -ForegroundColor Green
-        $skipped++
-    } else {
-        # Determine which extension to try: check if a partial .rar exists, else try .zip first
-        # Try to discover from S3 listing via aws cli, but fall back to trying both
-        $pcapExtensions = @("zip", "rar")
-        $downloadedPcap = $false
-        
-        foreach ($ext in $pcapExtensions) {
-            $localPcap = Join-Path $DOWNLOAD_DIR "$dayName-pcap.$ext"
-            $pcapUrl = "$BASE_HTTP/$dayName/pcap.$ext"
-            
-            # If a partial file with this extension exists, prioritize resuming it
-            $hasPartial = (Test-Path $localPcap) -or (Test-Path "$localPcap.aria2")
-            # Also check for temp fragments (like .2eDdd8BB)
-            $tempFragments = Get-ChildItem -Path $DOWNLOAD_DIR -Filter "$dayName-pcap.$ext.*" -ErrorAction SilentlyContinue
-            if ($tempFragments.Count -gt 0) { $hasPartial = $true }
-            
-            if ($hasPartial) {
-                Write-Host "  RESUME: $dayName-pcap.$ext (continuing from checkpoint)..." -ForegroundColor Magenta
+            $isResume = (Test-Path $localLog) -or (Test-Path "$localLog.aria2")
+            if ($isResume) {
+                Write-Host "  RESUME: $dayName-logs.zip ..." -ForegroundColor Magenta
                 $resumed++
             } else {
-                Write-Host "  TRYING: $dayName-pcap.$ext ..." -ForegroundColor White
+                Write-Host "  DOWNLOAD: $dayName-logs.zip ..." -ForegroundColor White
             }
             
             & aria2c --continue=true `
                      --dir="$DOWNLOAD_DIR" `
-                     --out="$dayName-pcap.$ext" `
+                     --out="$dayName-logs.zip" `
                      --max-connection-per-server=8 `
                      --split=8 `
                      --min-split-size=10M `
                      --file-allocation=none `
                      --auto-file-renaming=false `
                      --allow-overwrite=false `
-                     "$pcapUrl"
+                     "$logUrl"
             
             if ($LASTEXITCODE -eq 0) {
-                Write-Host "  DONE: $dayName-pcap.$ext" -ForegroundColor Green
+                Write-Host "  DONE: $dayName-logs.zip" -ForegroundColor Green
                 $downloaded++
-                $downloadedPcap = $true
-                break
+            } else {
+                Write-Host "  FAILED: $dayName-logs.zip (exit: $LASTEXITCODE)" -ForegroundColor Red
+                $failed++
             }
         }
+    } # End Logs
+    
+    # ========== PCAP ==========
+    if ($ds.GetPcap -eq $false) {
+        Write-Host "  SKIP: PCAP (per smart logic)" -ForegroundColor Cyan
+    } else {
+        # Try both .zip and .rar extensions; S3 filenames are just "pcap.zip" or "pcap.rar"
+        $localPcapZip = Join-Path $DOWNLOAD_DIR "$dayName-pcap.zip"
+        $localPcapRar = Join-Path $DOWNLOAD_DIR "$dayName-pcap.rar"
         
-        if (-not $downloadedPcap) {
-            Write-Host "  FAILED: No PCAP found for $dayName (tried .zip and .rar)" -ForegroundColor Red
-            $failed++
+        # Check if either complete pcap already exists
+        if ((Is-FileComplete $localPcapZip) -or (Is-FileComplete $localPcapRar)) {
+            $existingFile = if (Is-FileComplete $localPcapZip) { $localPcapZip } else { $localPcapRar }
+            $sizeMB = [math]::Round((Get-Item $existingFile).Length / 1MB, 1)
+            $existName = Split-Path $existingFile -Leaf
+            Write-Host "  SKIP: $existName (${sizeMB} MB, complete)" -ForegroundColor Green
+            $skipped++
+        } else {
+            # Determine which extension to try
+            $pcapExtensions = @("zip", "rar")
+            $downloadedPcap = $false
+            
+            foreach ($ext in $pcapExtensions) {
+                $localPcap = Join-Path $DOWNLOAD_DIR "$dayName-pcap.$ext"
+                $pcapUrl = "$BASE_HTTP/$dayName/pcap.$ext"
+                
+                $hasPartial = (Test-Path $localPcap) -or (Test-Path "$localPcap.aria2")
+                $tempFragments = Get-ChildItem -Path $DOWNLOAD_DIR -Filter "$dayName-pcap.$ext.*" -ErrorAction SilentlyContinue
+                if ($tempFragments.Count -gt 0) { $hasPartial = $true }
+                
+                if ($hasPartial) {
+                    Write-Host "  RESUME: $dayName-pcap.$ext (continuing from checkpoint)..." -ForegroundColor Magenta
+                    $resumed++
+                } else {
+                    Write-Host "  TRYING: $dayName-pcap.$ext ..." -ForegroundColor White
+                }
+                
+                & aria2c --continue=true `
+                         --dir="$DOWNLOAD_DIR" `
+                         --out="$dayName-pcap.$ext" `
+                         --max-connection-per-server=8 `
+                         --split=8 `
+                         --min-split-size=10M `
+                         --file-allocation=none `
+                         --auto-file-renaming=false `
+                         --allow-overwrite=false `
+                         "$pcapUrl"
+                
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "  DONE: $dayName-pcap.$ext" -ForegroundColor Green
+                    $downloaded++
+                    $downloadedPcap = $true
+                    break
+                }
+            }
+            
+            if (-not $downloadedPcap) {
+                Write-Host "  FAILED: No PCAP found for $dayName (tried .zip and .rar)" -ForegroundColor Red
+                $failed++
+            }
         }
-    }
+    } # End PCAP
     
     Write-Host ""
 }

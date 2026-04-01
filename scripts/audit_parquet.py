@@ -40,6 +40,7 @@ def audit_day(day_name):
 
 if __name__ == "__main__":
     target_days = [
+        "Tuesday-20-02-2018",
         "Wednesday-14-02-2018",
         "Wednesday-21-02-2018",
         "Thursday-15-02-2018",
