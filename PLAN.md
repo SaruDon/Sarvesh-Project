@@ -301,3 +301,28 @@ Label Verification: I discovered that the Infiltration attack times for Feb 28 w
 Mapping Attacks: I am now appending the official Infiltration attack window (approximately $14:42$ – $15:32$ UTC) to the master log.
 Generating Parquet: I am about to run src/dataset_builder.py --day Wednesday-28-02-2018 to generate the final labeled dataset for this day.
 Once this is finished, we will have a complete set of over 8 Million flows across all processed days, ready for the final model training! Shall I proceed with the labeling step?
+
+## Status: Day 7 - Research Framework & Hybrid Training (2026-04-03)
+
+This major milestone marks the transition from Data Extraction to Machine Learning Research. We have successfully established a high-performance training pipeline on the NVIDIA RTX A400 GPU.
+
+### ? Accomplishments
+1. **Final Dataset Certification**:
+   - Audited and standardized **51,118,529 flows** and **17,012,498 sequences**.
+   - Canonicalized label discrepancies across all days.
+2. **Professional Research Refactor**:
+   - Restructured the project into a modular architecture (src.data, src.models, src.training, src.evaluation).
+3. **Model Training Stage 1 (XGBoost) - COMPLETE**:
+   - Trained a flow-based classifier on **5,007,440 flows**.
+   - Result: Achieved **72% Recall** for attacks.
+4. **Explainability & EDA Stage 3/5 - COMPLETE**:
+   - Integrated **SHAP TreeExplainer** and generated the **Research EDA Portfolio** (Packet Rates, Durations, etc.).
+
+### ?? In-Progress: Stage 2 Transformer Training
+- **Goal**: Capturing **Long-Term/Stealthy** behavioral patterns across 200-packet windows.
+- **Status**: Currently training on the GPU (Estimated: 16 hours for 500k samples).
+
+### ?? Next Phase (Tomorrow)
+- [ ] **Attention Heatmaps**: Visualize triggering packets.
+- [ ] **Hybrid Inference**: Integrate Flow & Sequence scores.
+- [ ] **Final Certification**: Master Confusion Matrix.
