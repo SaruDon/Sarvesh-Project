@@ -6,12 +6,12 @@ from src.data.data_loader import NIDSDataset
 from torch.utils.data import DataLoader
 
 # Optimization for RTX A400 Tensor Cores
-torch.set_float32_matmul_precision('medium')
+torch.set_float32_matmul_precision('high')
 
 # Configuration
 PROCESSED_DIR = "processed_dataset"
 SCALER_PATH = "models/seq_scaler.joblib"
-BATCH_SIZE = 128
+BATCH_SIZE = 512 # Increased for "High GPU" edge
 EPOCHS = 3
 
 def train_stage2():

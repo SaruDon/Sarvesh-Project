@@ -21,11 +21,13 @@ def train_stage1():
         'objective': 'binary:logistic',
         'tree_method': 'hist', # Optimized for large data
         'device': 'cuda',     # Run on the RTX A400 GPU
-        'max_depth': 6,
-        'learning_rate': 0.1,
+        'max_depth': 8,        # Increased from 6
+        'learning_rate': 0.05, # Slower learning for deeper trees
         'eval_metric': 'logloss',
         'scale_pos_weight': 50 # Handle imbalance (Benign ~50x Attack)
     }
+    
+    num_round = 200 # Increased from default
     
     model = None
     first_chunk = True

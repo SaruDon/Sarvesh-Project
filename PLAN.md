@@ -326,3 +326,10 @@ This major milestone marks the transition from Data Extraction to Machine Learni
 - [ ] **Attention Heatmaps**: Visualize triggering packets.
 - [ ] **Hybrid Inference**: Integrate Flow & Sequence scores.
 - [ ] **Final Certification**: Master Confusion Matrix.
+
+### ??? High-Security Hybrid Logic (The 'No-Leakage' Rule)
+
+To prevent **Stealthy Infiltration** from bypassing XGBoost, our hybrid inference engine will follow these rules:
+1. **Loud Attacks (DDoS/Brute Force)**: Detected instantly by XGBoost (Stage 1).
+2. **Stealthy Attacks (Infiltration)**: Even if XGBoost labels them 'Benign', we will **Always-Verify** any session with 'Slow-Rate' or 'Small-Payload' patterns using the **Transformer (Stage 2)**.
+3. **Weighted Vote**: For suspicious sessions, the Transformer's deep packet-level insight will override XGBoost's flow-level stats to ensure zero undetected attacks.
