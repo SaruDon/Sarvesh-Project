@@ -1,0 +1,24 @@
+=== FINAL HYBRID NIDS EVALUATION (REFINED 500K) ===
+Total Samples Evaluated: 500000
+Transformer Trigger Rate: 0.00% (0 sessions)
+Overall Attack Recall: 0.10%
+
+--- Classification Report ---
+              precision    recall  f1-score   support
+
+      Benign       0.98      1.00      0.99    492202
+      Attack       0.01      0.00      0.00      7798
+
+    accuracy                           0.98    500000
+   macro avg       0.50      0.50      0.50    500000
+weighted avg       0.97      0.98      0.98    500000
+
+--- Per-Attack Recall ---
+Benign: 99.76% Recall
+SSH-BruteForce: 0.10% Recall
+FTP-BruteForce: 0.00% Recall
+Infiltration: 0.11% Recall
+
+--- Confusion Matrix ---
+[[491023   1179]
+ [  7790      8]]

@@ -8,10 +8,13 @@ from torch.utils.data import Dataset, DataLoader
 
 class NIDSDataset(Dataset):
     """Streaming dataset for Flow or Sequence data."""
-    def __init__(self, processed_dir, mode='flow', scaler_path=None):
+    def __init__(self, processed_dir, mode='flow', scaler_path=None, use_test_set=False):
         self.mode = mode
-        self.files = [f for f in glob.glob(os.path.join(processed_dir, "**", f"*_{mode}s.parquet"), recursive=True)
-                      if "Golden_Test_Set" not in f]
+        if use_test_set:
+            self.files = [f for f in glob.glob(os.path.join(processed_dir, "Golden_Test_Set", "**", f"*_{mode}s.parquet"), recursive=True)]
+        else:
+            self.files = [f for f in glob.glob(os.path.join(processed_dir, "**", f"*_{mode}s.parquet"), recursive=True)
+                          if "Golden_Test_Set" not in f]
         self.scaler = joblib.load(scaler_path) if scaler_path else None
         
         # Pre-calculate row indices for each file to allow random access across files
