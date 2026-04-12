@@ -1,3 +1,4 @@
+
 import os
 import glob
 from datetime import datetime
@@ -14,54 +15,66 @@ torch.set_float32_matmul_precision('high')
 # Configuration
 PROCESSED_DIR = "processed_dataset"
 SCALER_PATH = "models/seq_scaler.joblib"
-CHECKPOINT_DIR = "models/checkpoints"
+CHECKPOINT_DIR = "models/checkpoints_production"
 BATCH_SIZE = 512 
 EPOCHS = 10 
 
 def find_latest_checkpoint(checkpoint_dir):
     if not os.path.exists(checkpoint_dir):
         return None
-    # Look for both regular and 'last' checkpoints
     files = glob.glob(os.path.join(checkpoint_dir, "*.ckpt"))
     if not files:
         return None
     return max(files, key=os.path.getmtime)
 
-def train_subset_hypothesis():
+def train_production():
     print("="*70)
-    print("STAGE 2: TRANSFORMER SUBSET HYPOTHESIS TRAINING")
+    print("STAGE 2: TRANSFORMER PRODUCTION TRAINING (17M SAMPLES)")
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("Goal: Prove stabilization prevents model collapse (30 min run)")
+    print("Configuration: Stabilized Architecture [LayerNorm + AdamW]")
     print("="*70)
     
     # 1. Dataset & Loader
     dataset = ShardedNIDSDataset(PROCESSED_DIR, mode='sequence', scaler_path=SCALER_PATH)
     train_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, persistent_workers=True)
     
-    # 2. Model Initialization (Fresh from scratch)
+    # 2. Model Initialization (With Fixed Architecture)
     model = TransformerNIDS(input_dim=9, d_model=64, nhead=4, num_layers=2)
     
-    # 3. Trainer Configuration (Fast Subset)
+    # 3. Trainer Configuration (Full Run)
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=CHECKPOINT_DIR,
+        filename="transformer-v4-prod-{epoch:02d}-{train_loss:.2f}",
+        save_top_k=3,
+        monitor="train_loss",
+        save_last=True,
+        every_n_train_steps=10000 # Save frequently for 17-hour safety
+    )
+    
+    latest_ckpt = find_latest_checkpoint(CHECKPOINT_DIR)
+    if latest_ckpt:
+        print(f"RESUMING from checkpoint: {latest_ckpt}")
+    
     trainer = L.Trainer(
-        max_epochs=2,
-        limit_train_batches=2000, # Approx 1.02M Samples
+        max_epochs=EPOCHS,
         accelerator="gpu",
         devices=1,
-        precision="16-mixed",
-        log_every_n_steps=50,
+        callbacks=[checkpoint_callback],
+        precision="16-mixed", 
+        log_every_n_steps=100,
         enable_progress_bar=True
     )
     
     # 4. Train
-    print(f"Training on SUBSET (2000 batches) for 2 epochs...")
-    trainer.fit(model, train_loader)
+    print(f"Starting 17-hour production run...")
+    trainer.fit(model, train_loader, ckpt_path=latest_ckpt)
     
     # 5. Save final weights
-    final_path = "models/transformer_seq_v4_full.pth"
+    final_path = "models/transformer_seq_v4_production_full.pth"
     torch.save(model.state_dict(), final_path)
-    print(f"Hypothesis weights saved to {final_path}")
+    print(f"Production weights saved to {final_path}")
     print("="*70)
 
 if __name__ == "__main__":
-    train_subset_hypothesis()
+    train_production()

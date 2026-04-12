@@ -22,3 +22,9 @@ tests/
 .DS_Store
 Thumbs.db
 
+
+# Models & Results
+models/
+analysis_results/*.csv
+analysis_results/*.txt
+analysis_results/*.json

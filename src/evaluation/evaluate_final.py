@@ -13,9 +13,9 @@ import xgboost as xgb
 
 # Configuration
 TEST_DIR = "processed_dataset/Golden_Test_Set"
-XGB_PATH = "models/xgboost_flow_v1.json"
-TRANSFORMER_PATH = "models/transformer_seq_v1.pth"
-FLOW_SCALER_PATH = "models/flow_scaler.joblib"
+XGB_PATH = "models/xgboost_flow_v4.json"
+TRANSFORMER_PATH = "models/transformer_seq_v4_full.pth"
+FLOW_SCALER_PATH = "models/flow_scaler_v4.joblib"
 SEQ_SCALER_PATH = "models/seq_scaler.joblib"
 
 def evaluate_final_research():
@@ -48,25 +48,38 @@ def evaluate_final_research():
             X_flows = df_flows.drop(columns=[c for c in exclude if c in df_flows.columns]).values.astype(np.float32)
             y_flows_raw = df_flows['label'].values
             
-            # Load sequences only if file exists and lengths match
-            X_seqs = None
+            # --- Alignment Check: Only process samples where both exist ---
             if os.path.exists(seq_f):
                 df_seqs = pd.read_parquet(seq_f)
-                if len(df_seqs) == len(df_flows):
-                    X_seqs = np.stack(df_seqs['sequence_features'].values).reshape(-1, 200, 9)
-            
-            # --- Vectorized Hybrid Inference ---
-            file_preds, xgb_scores, triggers = nids.predict_batch(X_flows, X_seqs)
+                # Inner join on index ensures we only test samples with both flow & sequence
+                df_joined = df_flows.join(df_seqs, how='inner', rsuffix='_seq')
+                
+                if len(df_joined) == 0:
+                    continue # No aligned samples in this file
+                
+                # Separate back into flows and sequences for the pipeline
+                df_batch_flows = df_joined.drop(columns=[c for c in df_joined.columns if c.endswith('_seq') or c == 'sequence_features'])
+                X_batch_seqs = np.stack(df_joined['sequence_features'].values).reshape(-1, 200, 9)
+                y_batch = [1 if l != 'Benign' else 0 for l in df_joined['label']]
+                labels_batch = df_joined['label'].tolist()
+                
+                # --- Vectorized Hybrid Inference ---
+                file_preds, xgb_scores, triggers = nids.predict_batch(df_batch_flows, X_batch_seqs)
+            else:
+                # No sequences at all, fallback to XGBoost only
+                file_preds, xgb_scores, triggers = nids.predict_batch(df_flows, None)
+                y_batch = [1 if l != 'Benign' else 0 for l in df_flows['label']]
+                labels_batch = df_flows['label'].tolist()
             
             # Collect results (Truncate if over LIMIT)
             current_count = len(y_true)
             remaining = LIMIT - current_count
-            take = min(len(y_flows_raw), remaining)
+            take = min(len(y_batch), remaining)
             
-            y_true.extend(np.where(y_flows_raw[:take] != 'Benign', 1, 0))
+            y_true.extend(y_batch[:take])
             y_pred_final.extend(file_preds[:take])
-            labels_true.extend(y_flows_raw[:take])
-            total_transformer_triggers += (triggers if take == len(y_flows_raw) else int(triggers * (take / len(y_flows_raw))))
+            labels_true.extend(labels_batch[:take])
+            total_transformer_triggers += (triggers if take == len(y_batch) else int(triggers * (take / len(y_batch))))
             
             if len(y_true) >= LIMIT:
                 break
