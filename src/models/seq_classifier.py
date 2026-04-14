@@ -3,7 +3,7 @@ import torch.nn as nn
 import pytorch_lightning as L
 
 class TransformerNIDS(L.LightningModule):
-    def __init__(self, input_dim=9, d_model=64, nhead=4, num_layers=2, learning_rate=1e-4):
+    def __init__(self, input_dim=9, d_model=64, nhead=4, num_layers=2, learning_rate=3e-5):
         super().__init__()
         self.save_hyperparameters()
         
@@ -26,7 +26,9 @@ class TransformerNIDS(L.LightningModule):
         )
         
         self.apply(self._init_weights) # Robust Initialization
-        self.loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([5.0])) # Less aggressive bias
+        # pos_weight=18 reflects the 95:5 Benign:Attack ratio in the 17M dataset
+        # Without this, the model collapses by predicting Benign for everything
+        self.loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([18.0]))
         
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
