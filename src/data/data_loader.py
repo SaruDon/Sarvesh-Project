@@ -94,14 +94,18 @@ class ShardedNIDSDataset(IterableDataset):
     
     Interleaving: Buffers multiple files at once to maintain randomness.
     """
-    def __init__(self, processed_dir, mode='sequence', scaler_path=None, use_test_set=False, buffer_size=4):
+    def __init__(self, processed_dir, mode='sequence', scaler_path=None, use_test_set=False,
+                 buffer_size=4, exclude_days=None):
         self.mode = mode
+        exclude_days = exclude_days or []
         if use_test_set:
             self.all_files = [f for f in glob.glob(os.path.join(processed_dir, "Golden_Test_Set", "**", f"*_{mode}s.parquet"), recursive=True)]
         else:
-            self.all_files = [f for f in glob.glob(os.path.join(processed_dir, "**", f"*_{mode}s.parquet"), recursive=True)
-                              if "Golden_Test_Set" not in f]
-        
+            self.all_files = [
+                f for f in glob.glob(os.path.join(processed_dir, "**", f"*_{mode}s.parquet"), recursive=True)
+                if "Golden_Test_Set" not in f
+                and not any(day in f for day in exclude_days)  # Skip excluded days
+            ]
         self.scaler = joblib.load(scaler_path) if scaler_path else None
         self.buffer_size = buffer_size # Number of files to interleave
         

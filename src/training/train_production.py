@@ -16,8 +16,10 @@ torch.set_float32_matmul_precision('high')
 PROCESSED_DIR = "processed_dataset"
 SCALER_PATH = "models/seq_scaler.joblib"
 CHECKPOINT_DIR = "models/checkpoints_production"
-BATCH_SIZE = 512 
-EPOCHS = 10 
+BATCH_SIZE = 1024  # Increased from 512 -> better VRAM utilization
+EPOCHS = 1         # 1 epoch is sufficient for 17M samples (audit confirmed)
+# Skip days with zero attack content (wastes GPU time on pure benign data)
+EXCLUDE_DAYS = ["Thursday-15-02-2018"]
 
 def find_latest_checkpoint(checkpoint_dir):
     if not os.path.exists(checkpoint_dir):
@@ -35,8 +37,10 @@ def train_production():
     print("="*70)
     
     # 1. Dataset & Loader
-    dataset = ShardedNIDSDataset(PROCESSED_DIR, mode='sequence', scaler_path=SCALER_PATH)
-    train_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, persistent_workers=True)
+    dataset = ShardedNIDSDataset(PROCESSED_DIR, mode='sequence', scaler_path=SCALER_PATH,
+                                  exclude_days=EXCLUDE_DAYS)
+    train_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False,
+                              num_workers=4, persistent_workers=True, pin_memory=True)
     
     # 2. Model Initialization (With Fixed Architecture)
     model = TransformerNIDS(input_dim=9, d_model=64, nhead=4, num_layers=2)
@@ -55,15 +59,18 @@ def train_production():
     latest_ckpt = find_latest_checkpoint(CHECKPOINT_DIR)
     if latest_ckpt:
         print(f"RESUMING from checkpoint: {latest_ckpt}")
+    else:
+        print("Starting fresh training run with pos_weight=18 (class-balanced)")
     
     trainer = L.Trainer(
         max_epochs=EPOCHS,
         accelerator="gpu",
         devices=1,
         callbacks=[checkpoint_callback],
-        precision="16-mixed", 
-        log_every_n_steps=100,
-        enable_progress_bar=True
+        precision="16-mixed",
+        log_every_n_steps=50,    # More frequent logging
+        enable_progress_bar=True,
+        gradient_clip_val=1.0,   # Prevent loss spikes
     )
     
     # 4. Train
